@@ -1,0 +1,50 @@
+version: "3"
+services:
+  postgres:
+    image: library/postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./postgres/:/docker-entrypoint-initdb.d/
+    ports:
+      - "5432:5432"
+
+  migration-container:
+    build:
+      dockerfile: migration-container/Dockerfile
+    image: romanowalex/migration-container:v1.0
+    container_name: migration-container
+    command: migrate
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/holder
+      DATABASE_USER: program
+      DATABASE_PASSWORD: test
+    depends_on:
+      - postgres
+
+  migration-service:
+    build: migration-service/
+    image: romanowalex/migration-service:v1.0
+    container_name: migration-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    ports:
+      - "8080:8080"
+    depends_on:
+      - migration-container
+
+  data-loader:
+    build: data-loader/
+    image: romanowalex/data-loader:v1.0
+    container_name: data-loader
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      - migration-service
+
+volumes:
+  db-data:

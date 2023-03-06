@@ -1,0 +1,17 @@
+image:
+  repository: romanowalex/camunda-state-machine
+  tag: v1.0
+
+ports:
+  internal: 8080
+  external: 32080
+
+profile: k8s
+
+resources:
+  requests:
+    cpu: 2
+    memory: 4096Mi
+  limits:
+    cpu: 2
+    memory: 4096Mi

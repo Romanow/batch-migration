@@ -1,0 +1,5 @@
+rootProject.name = "batch-migration"
+
+include "common-domain"
+include "data-loader"
+include "migration-service"
