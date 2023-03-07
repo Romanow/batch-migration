@@ -8,6 +8,9 @@ users:
 databases:
   - name: holder
     user: program
+    schemas:
+      - public
+      - staged
 
 config: |-
   max_connections = 20

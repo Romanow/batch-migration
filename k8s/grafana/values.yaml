@@ -4,10 +4,8 @@ ingress:
   domain: ru
 
 prometheusService: prometheus
-influxService: influxdb
 
 dashboards:
-  - k6-results
   - spring-boot
   - k8s-global
   - k8s-namespaces

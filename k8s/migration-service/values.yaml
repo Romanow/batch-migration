@@ -1,17 +1,41 @@
 image:
-  repository: romanowalex/camunda-state-machine
+  repository: romanowalex/migration-service
   tag: v1.0
 
 ports:
   internal: 8080
-  external: 32080
+
+ingress:
+  enabled: true
+  name: migration-service
+  domain: local
 
 profile: k8s
 
 resources:
   requests:
-    cpu: 2
+    cpu: 1
     memory: 4096Mi
   limits:
-    cpu: 2
+    cpu: 1
     memory: 4096Mi
+
+initContainers:
+  - name: "init-migration-{{ .Release.Name }}"
+    image: romanowalex/migration-container:v1.0
+    imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+    env:
+      - name: DATABASE_URL
+        value: jdbc:postgresql://postgres:5432/holder
+      - name: DATABASE_USER
+        value: "{{ .Values.database.username }}"
+      - name: DATABASE_PASSWORD
+        value: "{{ .Values.database.password }}"
+
+postDeployContainers:
+  - name: "data-loader-{{ .Release.Name }}"
+    image: romanowalex/data-loader:v1.0
+    imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+    env:
+      - name: SPRING_PROFILES_ACTIVE
+        value: "{{ .Values.profile }}"

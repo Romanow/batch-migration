@@ -1,4 +1,0 @@
-ports:
-  external: 32086
-
-database: k6

@@ -18,7 +18,6 @@ services:
       dockerfile: migration-container/Dockerfile
     image: romanowalex/migration-container:v1.0
     container_name: migration-container
-    command: migrate
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/holder
       DATABASE_USER: program
