@@ -7,7 +7,7 @@ import ru.romanow.batch.migration.service.MigrationService
 @RestController
 @RequestMapping("/api/v1/migration")
 class MigrationController(
-    private val migrationService: MigrationService
+    private val migrationService: MigrationService,
 ) {
 
     @GetMapping("/{solveId}")

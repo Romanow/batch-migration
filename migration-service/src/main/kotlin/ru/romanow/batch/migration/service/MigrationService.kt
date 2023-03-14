@@ -1,32 +1,25 @@
 package ru.romanow.batch.migration.service
 
-import org.springframework.jdbc.core.BeanPropertyRowMapper
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
+import org.awaitility.Awaitility.await
+import org.springframework.batch.core.ExitStatus
+import org.springframework.batch.core.Job
+import org.springframework.batch.core.JobParametersBuilder
+import org.springframework.batch.core.launch.JobLauncher
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
-import ru.romanow.batch.migration.repository.AggregationResultRepository
-import ru.romanow.migration.domain.AggregationResultEntity
+import java.util.*
+import java.util.concurrent.TimeUnit
 
 @Service
-class MigrationService(
-    private val jdbcTemplate: NamedParameterJdbcTemplate,
-    private val aggregationResultRepository: AggregationResultRepository,
-) {
+class MigrationService(private val migration: Job, private val jobLauncher: JobLauncher) {
 
-    @Transactional
     fun migrate(solveId: String) {
-        val schema = "staged"
-        val rowMapper = BeanPropertyRowMapper(AggregationResultEntity::class.java)
-        val list = jdbcTemplate
-            .query("SELECT * FROM $schema.aggregation_result WHERE solve_id = :solveId",
-                mapOf("solveId" to solveId),
-                rowMapper)
-            .map { it.id = null; it }
-
-        aggregationResultRepository.saveAll(list)
-
-        jdbcTemplate.update("DELETE FROM $schema.aggregation_result WHERE solve_id = :solveId",
-            mapOf("solveId" to solveId))
+        val params = JobParametersBuilder()
+            .addString("solveId", solveId)
+            .addString("key", UUID.randomUUID().toString())
+            .toJobParameters()
+        val execution = jobLauncher.run(migration, params)
+        await()
+            .atMost(5, TimeUnit.MINUTES)
+            .until { execution.exitStatus !in listOf(ExitStatus.FAILED, ExitStatus.COMPLETED) }
     }
-
 }

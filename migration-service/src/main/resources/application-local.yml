@@ -4,3 +4,6 @@ spring:
     username: program
     password: test
     driver-class-name: org.postgresql.Driver
+
+logging.level:
+  org.springframework.batch: debug
