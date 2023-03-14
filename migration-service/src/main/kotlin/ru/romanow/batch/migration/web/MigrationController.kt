@@ -10,9 +10,14 @@ class MigrationController(
     private val migrationService: MigrationService,
 ) {
 
-    @GetMapping("/{solveId}")
+    @GetMapping("/batch/{solveId}")
     @ResponseStatus(HttpStatus.OK)
-    fun migrate(@PathVariable solveId: String) {
-        migrationService.migrate(solveId)
+    fun batchMigration(@PathVariable solveId: String) {
+        migrationService.batch(solveId)
+    }
+
+    @GetMapping("/database/{solveId}")
+    @ResponseStatus(HttpStatus.OK)
+    fun databaseMigration(@PathVariable solveId: String) {
     }
 }

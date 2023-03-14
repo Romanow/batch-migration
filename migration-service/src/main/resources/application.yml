@@ -34,3 +34,9 @@ springdoc:
   paths-to-match: /api/**
   default-consumes-media-type: application/json
   default-produces-media-type: application/json
+
+batch-processing:
+  threads: 10
+  chunk-size: 5000
+  main-schema: public
+  staged-schema: staged

@@ -10,6 +10,7 @@ import ru.romanow.migration.domain.AggregationResultEntity
 import java.math.BigDecimal.valueOf
 import java.time.LocalDateTime.now
 import java.time.format.DateTimeFormatter.BASIC_ISO_DATE
+import java.util.*
 import kotlin.random.Random.Default.nextDouble
 import kotlin.random.Random.Default.nextLong
 
@@ -31,13 +32,13 @@ class V100__UploadData : BaseJavaMigration() {
                 """
                 INSERT INTO $schema.aggregation_result
                     ( report_date, load_date, solve_id, time_bucket_number, time_bucket_code, end_date
-                    , currency_id, account_code, rate_type_code, in_balance_amount, out_balance_amount
+                    , currency_id, account_code, account_number, rate_type_code, in_balance_amount, out_balance_amount
                     , interest_payment_amount, principal_payment_amount, commission_amount
                     , average_principal_amount, accrued_interest_amount, ftp_income_amount, source_code
                     , interest_payment_rule_day_number, regular_payment_rule_day_number, segment, term_group
                     , partition_report_date, ytm_flag)
                     VALUES ( :reportDate, :loadDate, :solveId, :timeBucketNumber, :timeBucketCode, :endDate
-                           , :currencyId, :accountCode, :rateTypeCode, :inBalanceAmount, :outBalanceAmount
+                           , :currencyId, :accountCode, :accountNumber, :rateTypeCode, :inBalanceAmount, :outBalanceAmount
                            , :interestPaymentAmount, :principalPaymentAmount, :commissionAmount
                            , :averagePrincipalAmount, :accruedInterestAmount, :ftpIncomeAmount, :sourceCode
                            , :interestPaymentRuleDayNumber, :regularPaymentRuleDayNumber, :segment, :termGroup
@@ -59,6 +60,7 @@ class V100__UploadData : BaseJavaMigration() {
         endDate = now(),
         currencyId = "RUB",
         accountCode = "B_L_DEP_CORP_TERM_DEP_CORP",
+        accountNumber = UUID.randomUUID().toString(),
         rateTypeCode = "FLOAT",
         inBalanceAmount = valueOf(nextDouble(1000.0)),
         outBalanceAmount = valueOf(nextDouble(1000.0)),

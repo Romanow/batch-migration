@@ -15,7 +15,7 @@ data class AggregationResultEntity(
     @Column
     var accountCode: String? = null,
 
-    @Column
+    @Column(unique = true)
     var accountNumber: String? = null,
 
     @Column

@@ -1,0 +1,35 @@
+{
+  "groups": [
+    {
+      "name": "batch-processing",
+      "type": "ru.romanow.batch.migration.config.properties.BatchProcessingProperties",
+      "sourceType": "ru.romanow.batch.migration.config.properties.BatchProcessingProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "batch-processing.threads",
+      "type": "java.lang.String",
+      "description": "Count of parallel threads.",
+      "defaultValue": 10
+    },
+    {
+      "name": "batch-processing.chunk-size",
+      "type": "java.lang.String",
+      "description": "Batch size.",
+      "defaultValue": "5000"
+    },
+    {
+      "name": "batch-processing.main-schema",
+      "type": "java.lang.String",
+      "description": "Main schema.",
+      "defaultValue": "public"
+    },
+    {
+      "name": "batch-processing.staged-schema",
+      "type": "java.lang.String",
+      "description": "Staged schema.",
+      "defaultValue": "staged"
+    }
+  ]
+}

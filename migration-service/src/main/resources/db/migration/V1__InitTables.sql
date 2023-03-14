@@ -3,7 +3,7 @@ CREATE TABLE public.aggregation_result
 (
     id                                   BIGSERIAL PRIMARY KEY,
     account_code                         VARCHAR(255),
-    account_number                       VARCHAR(255),
+    account_number                       VARCHAR(255) UNIQUE,
     accrued_interest_amount              NUMERIC(38, 2),
     accrued_interest_fix_amount          NUMERIC(38, 2),
     accrued_interest_fix_rubles_amount   NUMERIC(38, 2),

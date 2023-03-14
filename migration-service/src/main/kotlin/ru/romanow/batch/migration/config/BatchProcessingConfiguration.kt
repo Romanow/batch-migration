@@ -1,5 +1,6 @@
 package ru.romanow.batch.migration.config
 
+import jakarta.persistence.EntityManagerFactory
 import org.slf4j.LoggerFactory
 import org.springframework.batch.core.*
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing
@@ -7,96 +8,139 @@ import org.springframework.batch.core.configuration.annotation.StepScope
 import org.springframework.batch.core.job.builder.JobBuilder
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
-import org.springframework.batch.item.ItemReader
+import org.springframework.batch.item.ItemProcessor
 import org.springframework.batch.item.ItemWriter
 import org.springframework.batch.item.database.JdbcPagingItemReader
 import org.springframework.batch.item.database.Order
-import org.springframework.batch.item.database.PagingQueryProvider
 import org.springframework.batch.item.database.builder.JdbcPagingItemReaderBuilder
+import org.springframework.batch.item.database.builder.JpaItemWriterBuilder
 import org.springframework.batch.item.database.support.PostgresPagingQueryProvider
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.task.SimpleAsyncTaskExecutor
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.PlatformTransactionManager
-import ru.romanow.batch.migration.repository.AggregationResultRepository
+import ru.romanow.batch.migration.config.properties.BatchProcessingProperties
+import ru.romanow.batch.migration.utils.ColumnRangePartitioner
 import ru.romanow.migration.domain.AggregationResultEntity
 import javax.sql.DataSource
 
-
 @Configuration
 @EnableBatchProcessing
+@EnableConfigurationProperties(value = [BatchProcessingProperties::class])
 class BatchProcessingConfiguration {
-    private var logger = LoggerFactory.getLogger("batch-processing-$NAME")
+    private val logger = LoggerFactory.getLogger(BatchProcessingConfiguration::class.java)
+
+    @Autowired
+    private lateinit var properties: BatchProcessingProperties
+
+    @Autowired
+    private lateinit var entityManagerFactory: EntityManagerFactory
+
+    @Autowired
+    private lateinit var dataSource: DataSource
 
     @Bean
-    fun migration(jobRepository: JobRepository, migrate: Step): Job {
+    fun migration(jobRepository: JobRepository, migrationManager: Step): Job {
         return JobBuilder(NAME, jobRepository)
-            .start(migrate)
+            .start(migrationManager)
             .build()
+    }
+
+    @Bean
+    fun migrationManager(
+        jobRepository: JobRepository,
+        migrate: Step
+    ): Step {
+        return StepBuilder("$NAME:manager", jobRepository)
+            .partitioner(NAME, partitioner(null))
+            .taskExecutor(taskExecutor())
+            .gridSize(properties.threads)
+            .step(migrate)
+            .build()
+    }
+
+    @Bean
+    fun taskExecutor() = SimpleAsyncTaskExecutor()
+
+    @Bean
+    @StepScope
+    fun partitioner(
+        @Value("#{jobParameters['solveId']}") solveId: String?
+    ): ColumnRangePartitioner {
+        return ColumnRangePartitioner(
+            column = "id",
+            table = "${properties.stagedSchema}.aggregation_result",
+            condition = "solve_id = $solveId",
+            jdbcTemplate = JdbcTemplate(dataSource)
+        )
     }
 
     @Bean
     fun migrate(
         jobRepository: JobRepository,
-        transactionManager: PlatformTransactionManager,
-        listener: StepExecutionListener,
-        stageSchemaReader: ItemReader<AggregationResultEntity>,
-        mainSchemaWriter: ItemWriter<AggregationResultEntity>
+        transactionManager: PlatformTransactionManager
     ): Step {
         return StepBuilder(NAME, jobRepository)
-            .chunk<AggregationResultEntity, AggregationResultEntity>(CHUNK_SIZE, transactionManager)
-            .listener(listener)
-            .reader(stageSchemaReader)
-            .writer(mainSchemaWriter)
+            .chunk<AggregationResultEntity, AggregationResultEntity>(properties.chunkSize, transactionManager)
+            .reader(stageSchemaReader(null, null, null))
+            .processor(processor())
+            .writer(mainSchemaWriter())
             .build()
     }
 
-    @Bean
-    fun listener(): StepExecutionListener {
-        return object : StepExecutionListener {
-            override fun beforeStep(execution: StepExecution) {
-                logger.info("Processing $execution")
-            }
-        }
-    }
-
+    // ======================================
+    // =============== reader ===============
+    // ======================================
     @Bean
     @StepScope
     fun stageSchemaReader(
-        dataSource: DataSource,
-        queryProvider: PagingQueryProvider,
-        @Value("#{jobParameters['solveId']}") solveId: String
+        @Value("#{jobParameters['solveId']}") solveId: String?,
+        @Value("#{stepExecutionContext['minValue']}") minValue: Long?,
+        @Value("#{stepExecutionContext['maxValue']}") maxValue: Long?
     ): JdbcPagingItemReader<AggregationResultEntity> {
+        val provider = PostgresPagingQueryProvider()
+        provider.setSelectClause("SELECT *")
+        provider.setFromClause("FROM ${properties.stagedSchema}.aggregation_result")
+        provider.setWhereClause("WHERE solve_id = :solveId AND id BETWEEN $minValue AND $maxValue")
+        provider.sortKeys = mapOf("id" to Order.ASCENDING)
+
+        logger.info("Reading from $minValue to $maxValue")
         return JdbcPagingItemReaderBuilder<AggregationResultEntity>()
-            .name("stage-schema-reader")
             .dataSource(dataSource)
-            .queryProvider(queryProvider)
+            .queryProvider(provider)
             .saveState(false)
-            .pageSize(CHUNK_SIZE)
+            .pageSize(properties.chunkSize)
             .beanRowMapper(AggregationResultEntity::class.java)
             .parameterValues(mapOf("solveId" to solveId))
             .build()
     }
 
+    // ======================================
+    // ============= processor ==============
+    // ======================================
     @Bean
-    fun queryProvider(): PagingQueryProvider {
-        val provider = PostgresPagingQueryProvider()
-        provider.setSelectClause("SELECT *")
-        provider.setFromClause("FROM $STAGED_SCHEMA.aggregation_result")
-        provider.setWhereClause("WHERE solve_id = :solveId")
-        provider.sortKeys = mapOf("id" to Order.ASCENDING)
-        return provider
+    fun processor(): ItemProcessor<AggregationResultEntity, AggregationResultEntity> {
+        return ItemProcessor<AggregationResultEntity, AggregationResultEntity> {
+            it.id = null
+            return@ItemProcessor it
+        }
     }
 
+    // ======================================
+    // =============== writer ===============
+    // ======================================
     @Bean
-    fun mainSchemaWriter(aggregationResultRepository: AggregationResultRepository): ItemWriter<AggregationResultEntity> {
-        return ItemWriter<AggregationResultEntity> { aggregationResultRepository.saveAll(it.items) }
+    fun mainSchemaWriter(): ItemWriter<AggregationResultEntity> {
+        return JpaItemWriterBuilder<AggregationResultEntity>()
+            .entityManagerFactory(entityManagerFactory)
+            .build()
     }
 
     companion object {
         const val NAME = "migration"
-        const val CHUNK_SIZE = 5000
-        const val MAIN_SCHEMA = "public"
-        const val STAGED_SCHEMA = "staged"
     }
 }
