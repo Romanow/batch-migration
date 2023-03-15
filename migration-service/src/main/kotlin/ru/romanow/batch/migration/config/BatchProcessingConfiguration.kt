@@ -8,6 +8,8 @@ import org.springframework.batch.core.configuration.annotation.StepScope
 import org.springframework.batch.core.job.builder.JobBuilder
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
+import org.springframework.batch.core.step.tasklet.Tasklet
+import org.springframework.batch.core.step.tasklet.TaskletStep
 import org.springframework.batch.item.ItemProcessor
 import org.springframework.batch.item.ItemWriter
 import org.springframework.batch.item.database.JdbcPagingItemReader
@@ -15,6 +17,7 @@ import org.springframework.batch.item.database.Order
 import org.springframework.batch.item.database.builder.JdbcPagingItemReaderBuilder
 import org.springframework.batch.item.database.builder.JpaItemWriterBuilder
 import org.springframework.batch.item.database.support.PostgresPagingQueryProvider
+import org.springframework.batch.repeat.RepeatStatus
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -22,6 +25,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.task.SimpleAsyncTaskExecutor
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.transaction.PlatformTransactionManager
 import ru.romanow.batch.migration.config.properties.BatchProcessingProperties
 import ru.romanow.batch.migration.utils.ColumnRangePartitioner
@@ -44,9 +48,14 @@ class BatchProcessingConfiguration {
     private lateinit var dataSource: DataSource
 
     @Bean
-    fun migration(jobRepository: JobRepository, migrationManager: Step): Job {
-        return JobBuilder(NAME, jobRepository)
+    fun migration(
+        jobRepository: JobRepository,
+        migrationManager: Step,
+        delete: TaskletStep
+    ): Job {
+        return JobBuilder(MIGRATION_NAME, jobRepository)
             .start(migrationManager)
+            .next(delete)
             .build()
     }
 
@@ -55,8 +64,8 @@ class BatchProcessingConfiguration {
         jobRepository: JobRepository,
         migrate: Step
     ): Step {
-        return StepBuilder("$NAME:manager", jobRepository)
-            .partitioner(NAME, partitioner(null))
+        return StepBuilder("$MIGRATION_NAME:manager", jobRepository)
+            .partitioner(MIGRATION_NAME, partitioner(null))
             .taskExecutor(taskExecutor())
             .gridSize(properties.threads)
             .step(migrate)
@@ -84,11 +93,18 @@ class BatchProcessingConfiguration {
         jobRepository: JobRepository,
         transactionManager: PlatformTransactionManager
     ): Step {
-        return StepBuilder(NAME, jobRepository)
+        return StepBuilder(MIGRATION_NAME, jobRepository)
             .chunk<AggregationResultEntity, AggregationResultEntity>(properties.chunkSize, transactionManager)
             .reader(stageSchemaReader(null, null, null))
             .processor(processor())
             .writer(mainSchemaWriter())
+            .build()
+    }
+
+    @Bean
+    fun delete(jobRepository: JobRepository, transactionManager: PlatformTransactionManager): TaskletStep {
+        return StepBuilder(DELETE_NAME, jobRepository)
+            .tasklet(deleteTask(null), transactionManager)
             .build()
     }
 
@@ -141,7 +157,26 @@ class BatchProcessingConfiguration {
             .build()
     }
 
+    // ======================================
+    // ================ task ================
+    // ======================================
+    @Bean
+    @StepScope
+    fun deleteTask(@Value("#{jobParameters['solveId']}") solveId: String?): Tasklet {
+        return Tasklet { _, _ ->
+            val jdbcTemplate = NamedParameterJdbcTemplate(dataSource)
+            val deleted = jdbcTemplate.update(
+                "DELETE FROM ${properties.stagedSchema}.aggregation_result WHERE solve_id = :solveId",
+                mapOf("solveId" to solveId)
+            )
+            logger.info("Removed $deleted items from ${properties.stagedSchema}")
+            return@Tasklet RepeatStatus.FINISHED
+        }
+    }
+
+
     companion object {
-        const val NAME = "migration"
+        const val MIGRATION_NAME = "migrate"
+        const val DELETE_NAME = "delete"
     }
 }

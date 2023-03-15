@@ -2,7 +2,7 @@
 
 [![Build project](https://github.com/Romanow/batch-migration/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/Romanow/batch-migration/actions/workflows/build.yml)
 
-### Build
+## Сборка и запуск
 
 ```shell
 $ ./gradlew clean build
@@ -48,4 +48,43 @@ $ helm install grafana -f grafana/values.yaml romanow/grafana
 $ helm install postgres romanow/postgres --values postgres/values.yaml      
 
 $ helm install migration-service romanow/java-service --values migration-service/values.yaml      
+```
+
+### Тестирование
+
+При параллельном выполнении в 10 потоков с блоками по 5000 записей на 2CPU, 4Gb:
+
+```
+Step: [migrate:partition9] executed in 3m29s368ms
+Step: [migrate:partition6] executed in 3m31s859ms
+Step: [migrate:partition7] executed in 3m35s659ms
+Step: [migrate:partition8] executed in 3m42s162ms
+Step: [migrate:partition0] executed in 3m42s171ms
+Step: [migrate:partition4] executed in 3m42s858ms
+Step: [migrate:partition2] executed in 3m44s359ms
+Step: [migrate:partition3] executed in 3m44s359ms
+Step: [migrate:partition5] executed in 3m44s587ms
+Step: [migrate:partition1] executed in 3m45s27ms
+Step: [migrate:manager] executed in 3m45s258ms
+Executing step: [delete]
+Removed 400000 items from staged
+Step: [delete] executed in 654ms
+
+Job: [SimpleJob: [name=migration]]
+completed with the following parameters:
+[
+  {
+    "solveId": {
+      "value": "solve_id",
+      "type": "class java.lang.String",
+      "identifying": true
+    },
+    "key": {
+      "value": "2023-03-15T09:23:24.955656258",
+      "type": "class java.lang.String",
+      "identifying": true
+    }
+  }
+]
+and the following status: [COMPLETED] in 4m6s649ms
 ```
