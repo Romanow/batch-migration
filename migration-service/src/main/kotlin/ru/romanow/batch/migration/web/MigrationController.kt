@@ -19,5 +19,6 @@ class MigrationController(
     @GetMapping("/database/{solveId}")
     @ResponseStatus(HttpStatus.OK)
     fun databaseMigration(@PathVariable solveId: String) {
+        migrationService.database(solveId)
     }
 }
