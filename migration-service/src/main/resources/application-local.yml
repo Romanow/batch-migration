@@ -7,3 +7,4 @@ spring:
 
 logging.level:
   org.springframework.batch.item.database: debug
+  ru.romanow.batch.migration: debug

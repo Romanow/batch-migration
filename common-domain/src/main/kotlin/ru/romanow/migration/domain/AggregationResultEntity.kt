@@ -316,5 +316,5 @@ data class AggregationResultEntity(
     var portRisksScheduledLinkId: String? = null,
 
     @Column
-    var behaviorModelCode: String? = null,
+    var behaviorModelCode: String? = null
 )

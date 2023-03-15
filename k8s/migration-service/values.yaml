@@ -1,6 +1,6 @@
 image:
   repository: romanowalex/migration-service
-  tag: v1.0
+  tag: v2.0
 
 ports:
   internal: 8080
@@ -22,7 +22,7 @@ resources:
 
 initContainers:
   - name: "init-migration-{{ .Release.Name }}"
-    image: romanowalex/migration-container:v1.0
+    image: romanowalex/migration-container:v2.0
     imagePullPolicy: "{{ .Values.image.pullPolicy }}"
     env:
       - name: DATABASE_URL
@@ -34,7 +34,7 @@ initContainers:
 
 postDeployContainers:
   - name: "data-loader-{{ .Release.Name }}"
-    image: romanowalex/data-loader:v1.0
+    image: romanowalex/data-loader:v2.0
     imagePullPolicy: "{{ .Values.image.pullPolicy }}"
     env:
       - name: SPRING_PROFILES_ACTIVE

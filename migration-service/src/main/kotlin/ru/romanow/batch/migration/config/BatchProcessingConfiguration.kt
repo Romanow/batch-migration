@@ -109,6 +109,7 @@ class BatchProcessingConfiguration {
         provider.sortKeys = mapOf("id" to Order.ASCENDING)
 
         logger.info("Reading from $minValue to $maxValue")
+
         return JdbcPagingItemReaderBuilder<AggregationResultEntity>()
             .dataSource(dataSource)
             .queryProvider(provider)

@@ -16,7 +16,7 @@ services:
   migration-container:
     build:
       dockerfile: migration-container/Dockerfile
-    image: romanowalex/migration-container:v1.0
+    image: romanowalex/migration-container:v2.0
     container_name: migration-container
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/holder
@@ -27,7 +27,7 @@ services:
 
   migration-service:
     build: migration-service/
-    image: romanowalex/migration-service:v1.0
+    image: romanowalex/migration-service:v2.0
     container_name: migration-service
     environment:
       SPRING_PROFILES_ACTIVE: docker
@@ -38,7 +38,7 @@ services:
 
   data-loader:
     build: data-loader/
-    image: romanowalex/data-loader:v1.0
+    image: romanowalex/data-loader:v2.0
     container_name: data-loader
     environment:
       SPRING_PROFILES_ACTIVE: docker

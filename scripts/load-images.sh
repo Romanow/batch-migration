@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-version=${1:-v1.0}
+version=${1:-v2.0}
 
 images=(
   "postgres:15"

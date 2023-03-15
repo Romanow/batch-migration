@@ -45,11 +45,12 @@ open class ColumnRangePartitioner(
             }
             value.putInt("minValue", start)
             value.putInt("maxValue", end)
+
+            logger.info("Add partition${number} from $start to $end")
+
             start += targetSize
             end += targetSize
             number++
-
-            logger.info("Add partition from $start to $end")
         }
         return result
     }

@@ -36,7 +36,7 @@ springdoc:
   default-produces-media-type: application/json
 
 batch-processing:
-  threads: 10
-  chunk-size: 5000
+  threads: ${BATCH_THREADS:10}
+  chunk-size: ${BATCH_SIZE:5000}
   main-schema: public
   staged-schema: staged
