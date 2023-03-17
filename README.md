@@ -52,6 +52,8 @@ $ helm install migration-service romanow/java-service --values migration-service
 
 ### Тестирование
 
+![Spring Batch Architecture](images/Spring%20Batch%20Architecture.png)
+
 При параллельном выполнении в 10 потоков с блоками по 5000 записей на 2CPU, 4Gb:
 
 ```
