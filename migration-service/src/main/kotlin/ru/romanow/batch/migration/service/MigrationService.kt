@@ -39,7 +39,7 @@ class MigrationService(
                                                accrued_interest_fix_amount, accrued_interest_fix_rubles_amount,
                                                accrued_interest_float_amount, accrued_interest_float_rubles_amount,
                                                accrued_interest_rubles_amount, addition_flag, agreement_rank,
-                                               average_principal_amount, average_principal_rubles_amount, avg_interest_rate,
+                                               average_principal_amount, average_principal_rubles_amount, average_interest_rate,
                                                balance_number, behavior_model_code, call_deposit_flag, client_id, comment1,
                                                comment2, commission_amount, commission_rubles_amount, credential_type_number,
                                                currency_id, current_principal_amount, current_principal_rub_amount,

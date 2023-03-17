@@ -23,12 +23,9 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.core.task.SimpleAsyncTaskExecutor
-import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.transaction.PlatformTransactionManager
 import ru.romanow.batch.migration.config.properties.BatchProcessingProperties
-import ru.romanow.batch.migration.utils.ColumnRangePartitioner
 import ru.romanow.migration.domain.AggregationResultEntity
 import javax.sql.DataSource
 
@@ -50,42 +47,14 @@ class BatchProcessingConfiguration {
     @Bean
     fun migration(
         jobRepository: JobRepository,
-        migrationManager: Step,
+        migrate: Step,
         delete: TaskletStep
     ): Job {
         return JobBuilder(MIGRATION_NAME, jobRepository)
-            .start(migrationManager)
+            .preventRestart()
+            .start(migrate)
             .next(delete)
             .build()
-    }
-
-    @Bean
-    fun migrationManager(
-        jobRepository: JobRepository,
-        migrate: Step
-    ): Step {
-        return StepBuilder("$MIGRATION_NAME:manager", jobRepository)
-            .partitioner(MIGRATION_NAME, partitioner(null))
-            .taskExecutor(taskExecutor())
-            .gridSize(properties.threads)
-            .step(migrate)
-            .build()
-    }
-
-    @Bean
-    fun taskExecutor() = SimpleAsyncTaskExecutor()
-
-    @Bean
-    @StepScope
-    fun partitioner(
-        @Value("#{jobParameters['solveId']}") solveId: String?
-    ): ColumnRangePartitioner {
-        return ColumnRangePartitioner(
-            column = "id",
-            table = "${properties.stagedSchema}.aggregation_result",
-            condition = "solve_id = $solveId",
-            jdbcTemplate = JdbcTemplate(dataSource)
-        )
     }
 
     @Bean
@@ -95,7 +64,7 @@ class BatchProcessingConfiguration {
     ): Step {
         return StepBuilder(MIGRATION_NAME, jobRepository)
             .chunk<AggregationResultEntity, AggregationResultEntity>(properties.chunkSize, transactionManager)
-            .reader(stageSchemaReader(null, null, null))
+            .reader(stageSchemaReader(null))
             .processor(processor())
             .writer(mainSchemaWriter())
             .build()
@@ -114,17 +83,13 @@ class BatchProcessingConfiguration {
     @Bean
     @StepScope
     fun stageSchemaReader(
-        @Value("#{jobParameters['solveId']}") solveId: String?,
-        @Value("#{stepExecutionContext['minValue']}") minValue: Long?,
-        @Value("#{stepExecutionContext['maxValue']}") maxValue: Long?
+        @Value("#{jobParameters['solveId']}") solveId: String?
     ): JdbcPagingItemReader<AggregationResultEntity> {
         val provider = PostgresPagingQueryProvider()
         provider.setSelectClause("SELECT *")
         provider.setFromClause("FROM ${properties.stagedSchema}.aggregation_result")
-        provider.setWhereClause("WHERE solve_id = :solveId AND id BETWEEN $minValue AND $maxValue")
+        provider.setWhereClause("WHERE solve_id = :solveId")
         provider.sortKeys = mapOf("id" to Order.ASCENDING)
-
-        logger.info("Reading from $minValue to $maxValue")
 
         return JdbcPagingItemReaderBuilder<AggregationResultEntity>()
             .dataSource(dataSource)
